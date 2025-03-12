@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Speech-to-Code | Interactive Coding Platform</title>
+  <link rel="stylesheet" href="App.css">
+  <meta name="description" content="Convert your voice instructions into programming code with real-time feedback">
+  <!-- Font for code -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div id="root"></div>
+  
+  <!-- For a standalone prototype without React build system -->
+  <script>
+    // Simple DOM representation of the React App above
+    document.addEventListener('DOMContentLoaded', function() {
+      const root = document.getElementById('root');
+      
+      // Create app structure
+      root.innerHTML = `
+        <div class="app-container">
+          <header>
+            <h1>Spode Prototype</h1>
+            <div class="controls">
+              <select id="language-select">
+                <option value="javascript">JavaScript</option>
+                <option value="python">Python</option>
+              </select>
+              <button id="listen-button">Start Listening</button>
+              <button id="clear-button">Clear All</button>
+            </div>
+          </header>
+          
+          <main>
+            <section class="input-section">
+              <h2>Voice Input</h2>
+              <div class="transcript-container">
+                <p id="transcript">Speak to generate code. Try saying "create a for loop to iterate through an array"</p>
+              </div>
+            </section>
+            
+            <section class="output-section">
+              <h2>Generated Code</h2>
+              <div class="code-container">
+                <pre><code id="generated-code">// Your code will appear here</code></pre>
+              </div>
+              
+              <div class="feedback-container" id="feedback-container" style="display: none;">
+                <h3>Feedback</h3>
+                <p id="feedback"></p>
+              </div>
+            </section>
+          </main>
+          
+          <footer>
+            <p>Spode Platform | Prototype Version</p>
+          </footer>
+        </div>
+      `;
+      
+      // State variables
+      let isListening = false;
+      let transcript = '';
+      let recognition = null;
+      let language = 'javascript';
+      
+      // Elements
+      const listenButton = document.getElementById('listen-button');
+      const clearButton = document.getElementById('clear-button');
+      const languageSelect = document.getElementById('language-select');
+      const transcriptElement = document.getElementById('transcript');
+      const codeElement = document.getElementById('generated-code');
+      const feedbackContainer = document.getElementById('feedback-container');
+      const feedbackElement = document.getElementById('feedback');
+      
+      // Initialize speech recognition
+      function initializeSpeechRecognition() {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        
+        if (!SpeechRecognition) {
+          alert("Your browser doesn't support speech recognition. Please use Chrome, Edge, or Safari.");
+          return false;
+        }
+        
+        recognition = new SpeechRecognition();
+        recognition.continuous = true;
+        recognition.interimResults = true;
+        
+        recognition.onresult = function(event) {
+          let currentTranscript = '';
+          
+          for (let i = event.resultIndex; i < event.results.length; i++) {
+            currentTranscript += event.results[i][0].transcript;
+          }
+          
+          if (transcript.trim() !== currentTranscript.trim()) {
+            transcript += ' ' + currentTranscript;
+            transcriptElement.textContent = transcript;
+          }
+        };
+        
+        recognition.onend = function() {
+          if (isListening) {
+            recognition.start();
+          }
+        };
+        
+        return true;
+      }
+      
+      // Toggle listening
+      function toggleListening() {
+        if (!recognition && !initializeSpeechRecognition()) {
+          return;
+        }
+        
+        if (isListening) {
+          recognition.stop();
+          listenButton.textContent = '🎤 Start Listening';
+          listenButton.classList.remove('listening');
+          generateCode(transcript);
+        } else {
+          transcript = '';
+          transcriptElement.textContent = '';
+          recognition.start();
+          listenButton.textContent = '🛑 Stop Listening';
+          listenButton.classList.add('listening');
+        }
+        
+        isListening = !isListening;
+      }
+      
+      // Generate code
+      function generateCode(text) {
+        if (!text.trim()) return;
+        
+        // Simulate API delay
+        setTimeout(() => {
+          let code = '';
+          let newFeedback = '';
+          
+          // Basic pattern matching for demo
+          if (language === 'javascript') {
+            if (text.includes('for loop') || text.includes('iterate')) {
+              if (text.includes('node') || text.includes('nodes')) {
+                code = `// Iterating through nodes
+const nodes = document.querySelectorAll('.node');
+for (let i = 0; i < nodes.length; i++) {
+  const node = nodes[i];
+  console.log(node.textContent);
+}`;
+                newFeedback = "Consider using forEach or for...of for cleaner iteration syntax.";
+              } else if (text.includes('array') || text.includes('list')) {
+                code = `// Iterating through an array
+const items = [1, 2, 3, 4, 5];
+for (let i = 0; i < items.length; i++) {
+  console.log(items[i]);
+}`;
+                newFeedback = "Array methods like map(), filter(), or forEach() might be more appropriate depending on your needs.";
+              } else {
+                code = `// Basic for loop
+for (let i = 0; i < 10; i++) {
+  console.log(i);
+}`;
+              }
+            } else if (text.includes('function') || text.includes('create function')) {
+              code = `// Function declaration
+function processData(data) {
+  if (!data) return null;
+  
+  const result = data.map(item => {
+    return {
+      id: item.id,
+      value: item.value * 2
+    };
+  });
+  
+  return result;
+}`;
+              newFeedback = "Good job defining a function. Consider adding JSDoc comments for better documentation.";
+            } else if (text.includes('fetch') || text.includes('API') || text.includes('get data')) {
+              code = `// Fetch data from API
+async function fetchUserData(userId) {
+  try {
+    const response = await fetch(\`https://api.example.com/users/\${userId}\`);
+    
+    if (!response.ok) {
+      throw new Error(\`HTTP error! Status: \${response.status}\`);
+    }
+    
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Error fetching user data:', error);
+    return null;
+  }
+}`;
+              newFeedback = "Good use of async/await pattern with proper error handling.";
+            } else {
+              code = `// Generated code based on: "${text}"
+console.log("Implement functionality here");`;
+              newFeedback = "Your instruction needs more specific programming concepts. Try phrases like 'create a function that', 'write a loop to', etc.";
+            }
+          } else if (language === 'python') {
+            if (text.includes('for loop') || text.includes('iterate')) {
+              if (text.includes('node') || text.includes('nodes')) {
+                code = `# Iterating through nodes (assuming Beautiful Soup)
+from bs4 import BeautifulSoup
+
+soup = BeautifulSoup(html_content, 'html.parser')
+nodes = soup.select('.node')
+for node in nodes:
+    print(node.text)`;
+              } else if (text.includes('array') || text.includes('list')) {
+                code = `# Iterating through a list
+items = [1, 2, 3, 4, 5]
+for item in items:
+    print(item)`;
+              } else {
+                code = `# Basic for loop
+for i in range(10):
+    print(i)`;
+              }
+              newFeedback = "Python's for loops are concise and readable. Good choice for iteration!";
+            } else {
+              code = `# Generated code based on: "${text}"
+def main():
+    print("Implement functionality here")
+
+if __name__ == "__main__":
+    main()`;
+              newFeedback = "Try being more specific about what Python code you need.";
+            }
+          }
+          
+          codeElement.textContent = code;
+          feedbackElement.textContent = newFeedback;
+          feedbackContainer.style.display = newFeedback ? 'block' : 'none';
+        }, 1000);
+      }
+      
+      // Clear all
+      function clearAll() {
+        transcript = '';
+        transcriptElement.textContent = 'Speak to generate code. Try saying "create a for loop to iterate through an array"';
+        codeElement.textContent = '// Your code will appear here';
+        feedbackContainer.style.display = 'none';
+      }
+      
+      // Handle language change
+      function handleLanguageChange() {
+        language = languageSelect.value;
+      }
+      
+      // Add event listeners
+      listenButton.addEventListener('click', toggleListening);
+      clearButton.addEventListener('click', clearAll);
+      languageSelect.addEventListener('change', handleLanguageChange);
+    });
+  </script>
+</body>
+</html>
